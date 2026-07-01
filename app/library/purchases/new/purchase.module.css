@@ -1395,3 +1395,122 @@
   }
 }
 
+/* ===========================
+   ENCABEZADO AUTENTICADO - AJUSTE FINAL
+=========================== */
+
+.authenticatedUser {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.authenticatedUser .userAvatar {
+  width: 33px;
+  height: 33px;
+  flex: 0 0 33px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #12375b, #16a4c5);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.authenticatedUser .userIdentity {
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 12px 7px 10px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  border: 1px solid #d8e4ec;
+  border-radius: 12px;
+  background: #f8fbfd;
+}
+
+.authenticatedUser .userIdentity small {
+  color: #7a8c9b;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.authenticatedUser .userIdentity strong {
+  max-width: 125px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #12375b;
+  font-size: 11px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.authenticatedUser > a.logoutButton {
+  min-height: 44px;
+  padding: 0 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: static;
+  border: 0;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #12375b, #235d89);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(18, 55, 91, 0.2);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.authenticatedUser > a.logoutButton::after {
+  display: none;
+  content: none;
+}
+
+.authenticatedUser > a.logoutButton:hover {
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 13px 27px rgba(18, 55, 91, 0.26);
+}
+
+.authenticatedUser > a.logoutButton:focus-visible {
+  outline: 3px solid rgba(22, 164, 197, 0.25);
+  outline-offset: 3px;
+}
+
+@media (max-width: 1080px) {
+  .authenticatedUser .userIdentity {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .authenticatedUser {
+    gap: 8px;
+  }
+
+  .authenticatedUser > a.logoutButton {
+    min-height: 42px;
+    padding-right: 13px;
+    padding-left: 13px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .authenticatedUser .userAvatar {
+    display: none;
+  }
+}
+

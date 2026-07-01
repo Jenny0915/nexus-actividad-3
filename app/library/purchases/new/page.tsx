@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import LanguageSelector from "@/components/LanguageSelector";
 import { getAuthenticatedDatabaseUser } from "@/lib/data/auth-user";
+import { getLocale } from "@/lib/i18n/get-locale";
 import { getBookById } from "@/lib/data/books";
 
 import PurchaseForm from "./PurchaseForm";
@@ -110,9 +112,10 @@ export default async function NewPurchasePage({
     notFound();
   }
 
-  const [book, authenticatedUser] = await Promise.all([
+  const [book, authenticatedUser, locale] = await Promise.all([
     getBookById(bookId),
     getAuthenticatedDatabaseUser(),
+    getLocale(),
   ]);
 
   if (!book) {
@@ -189,10 +192,7 @@ export default async function NewPurchasePage({
 
             <Link href="/coworking">Co-working</Link>
 
-            <button type="button" className={styles.languageButton}>
-              ES
-              <span aria-hidden="true">⌄</span>
-            </button>
+            <LanguageSelector locale={locale} />
 
             {authenticatedUser ? (
               <div className={styles.authenticatedUser}>
@@ -211,14 +211,14 @@ export default async function NewPurchasePage({
                   </strong>
                 </span>
 
-                <Link href="/auth/logout" className={styles.logoutButton}>
+                <a href="/auth/logout" className={styles.logoutButton}>
                   Cerrar sesión
-                </Link>
+                </a>
               </div>
             ) : (
-              <Link href={loginHref} className={styles.loginButton}>
+              <a href={loginHref} className={styles.loginButton}>
                 Iniciar sesión
-              </Link>
+              </a>
             )}
           </nav>
         </div>

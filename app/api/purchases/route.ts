@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { PoolClient } from "pg";
 
 import { getAuthenticatedDatabaseUser } from "@/lib/data/auth-user";
 import { db } from "@/lib/db";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 interface PurchaseItemInput {
   productType: "book" | "magazine";
@@ -22,22 +26,29 @@ interface ProcessedItem {
 }
 
 export async function POST(request: NextRequest) {
-  const authenticatedUser = await getAuthenticatedDatabaseUser();
-
-  if (!authenticatedUser) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Debes iniciar sesión para registrar una compra.",
-      },
-      { status: 401 },
-    );
-  }
-
-  const client = await db.connect();
+  let client: PoolClient | null = null;
   let transactionStarted = false;
 
   try {
+    const authenticatedUser =
+      await getAuthenticatedDatabaseUser();
+
+    if (!authenticatedUser) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "La sesión no pudo validarse. Recarga la página e inicia sesión nuevamente.",
+        },
+        {
+          status: 401,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
+
     const body = (await request.json()) as PurchaseRequestBody;
 
     if (!Array.isArray(body.items) || body.items.length === 0) {
@@ -49,6 +60,8 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+
+    client = await db.connect();
 
     await client.query("BEGIN");
     transactionStarted = true;
@@ -74,7 +87,8 @@ export async function POST(request: NextRequest) {
         throw new Error("INVALID_ITEM");
       }
 
-      const table = productType === "book" ? "books" : "magazines";
+      const table =
+        productType === "book" ? "books" : "magazines";
 
       const productResult = await client.query(
         `
@@ -90,7 +104,7 @@ export async function POST(request: NextRequest) {
         [productId],
       );
 
-      if (productResult.rowCount === 0) {
+      if ((productResult.rowCount ?? 0) === 0) {
         throw new Error(
           `PRODUCT_NOT_FOUND:${productType}:${productId}`,
         );
@@ -153,7 +167,7 @@ export async function POST(request: NextRequest) {
           purchased_at,
           created_at
       `,
-      [authenticatedUser.id, totalAmount],
+      [Number(authenticatedUser.id), totalAmount],
     );
 
     const purchase = purchaseResult.rows[0];
@@ -163,7 +177,9 @@ export async function POST(request: NextRequest) {
         item.productType === "book" ? item.productId : null;
 
       const magazineId =
-        item.productType === "magazine" ? item.productId : null;
+        item.productType === "magazine"
+          ? item.productId
+          : null;
 
       await client.query(
         `
@@ -186,7 +202,9 @@ export async function POST(request: NextRequest) {
       );
 
       const table =
-        item.productType === "book" ? "books" : "magazines";
+        item.productType === "book"
+          ? "books"
+          : "magazines";
 
       const stockUpdateResult = await client.query(
         `
@@ -201,7 +219,7 @@ export async function POST(request: NextRequest) {
         [item.quantity, item.productId],
       );
 
-      if (stockUpdateResult.rowCount === 0) {
+      if ((stockUpdateResult.rowCount ?? 0) === 0) {
         throw new Error(
           `INSUFFICIENT_STOCK:${item.productType}:${item.productId}`,
         );
@@ -220,21 +238,29 @@ export async function POST(request: NextRequest) {
           items: processedItems,
         },
       },
-      { status: 201 },
+      {
+        status: 201,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
     );
   } catch (error) {
-    if (transactionStarted) {
+    if (transactionStarted && client) {
       await client.query("ROLLBACK");
     }
 
     const message =
-      error instanceof Error ? error.message : "UNKNOWN_ERROR";
+      error instanceof Error
+        ? error.message
+        : "UNKNOWN_ERROR";
 
     if (message === "INVALID_ITEM") {
       return NextResponse.json(
         {
           success: false,
-          message: "Uno o más productos tienen datos inválidos.",
+          message:
+            "Uno o más productos tienen datos inválidos.",
         },
         { status: 400 },
       );
@@ -244,7 +270,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Uno de los productos solicitados no existe.",
+          message:
+            "Uno de los productos solicitados no existe.",
         },
         { status: 404 },
       );
@@ -254,7 +281,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Uno de los productos solicitados está inactivo.",
+          message:
+            "Uno de los productos solicitados está inactivo.",
         },
         { status: 400 },
       );
@@ -264,7 +292,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "No hay stock suficiente para uno de los productos.",
+          message:
+            "No hay stock suficiente para uno de los productos.",
         },
         { status: 409 },
       );
@@ -290,6 +319,8 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }
