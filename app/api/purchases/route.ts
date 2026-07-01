@@ -1,82 +1,80 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { getAuthenticatedDatabaseUser } from "@/lib/data/auth-user";
 import { db } from "@/lib/db";
 
 interface PurchaseItemInput {
   productType: "book" | "magazine";
-  productId: number;
-  quantity: number;
+  productId: number | string;
+  quantity: number | string;
 }
 
 interface PurchaseRequestBody {
-  userId: number;
   items: PurchaseItemInput[];
 }
 
+interface ProcessedItem {
+  productType: "book" | "magazine";
+  productId: number;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
 export async function POST(request: NextRequest) {
+  const authenticatedUser = await getAuthenticatedDatabaseUser();
+
+  if (!authenticatedUser) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Debes iniciar sesión para registrar una compra.",
+      },
+      { status: 401 },
+    );
+  }
+
   const client = await db.connect();
+  let transactionStarted = false;
 
   try {
     const body = (await request.json()) as PurchaseRequestBody;
 
-    if (
-      !Number.isInteger(body.userId) ||
-      body.userId <= 0 ||
-      !Array.isArray(body.items) ||
-      body.items.length === 0
-    ) {
+    if (!Array.isArray(body.items) || body.items.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Debe enviar un usuario válido y al menos un producto para la compra.",
+          message: "Debe enviar al menos un producto para la compra.",
         },
-        { status: 400 }
-      );
-    }
-
-    const userResult = await client.query(
-      `
-        SELECT id
-        FROM users
-        WHERE id = $1
-      `,
-      [body.userId]
-    );
-
-    if (userResult.rowCount === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: `No se encontró el usuario con identificador ${body.userId}.`,
-        },
-        { status: 404 }
+        { status: 400 },
       );
     }
 
     await client.query("BEGIN");
+    transactionStarted = true;
 
-    const processedItems: Array<{
-      productType: "book" | "magazine";
-      productId: number;
-      quantity: number;
-      unitPrice: number;
-      subtotal: number;
-    }> = [];
-
+    const processedItems: ProcessedItem[] = [];
     let totalAmount = 0;
 
     for (const item of body.items) {
+      const productType = item.productType;
+      const productId = Number(item.productId);
+      const quantity = Number(item.quantity);
+
+      const isValidProductType =
+        productType === "book" || productType === "magazine";
+
       if (
-        !["book", "magazine"].includes(item.productType) ||
-        !Number.isInteger(item.productId) ||
-        item.productId <= 0 ||
-        !Number.isInteger(item.quantity) ||
-        item.quantity <= 0
+        !isValidProductType ||
+        !Number.isInteger(productId) ||
+        productId <= 0 ||
+        !Number.isInteger(quantity) ||
+        quantity <= 0
       ) {
         throw new Error("INVALID_ITEM");
       }
 
-      const table = item.productType === "book" ? "books" : "magazines";
+      const table = productType === "book" ? "books" : "magazines";
 
       const productResult = await client.query(
         `
@@ -89,12 +87,12 @@ export async function POST(request: NextRequest) {
           WHERE id = $1
           FOR UPDATE
         `,
-        [item.productId]
+        [productId],
       );
 
       if (productResult.rowCount === 0) {
         throw new Error(
-          `PRODUCT_NOT_FOUND:${item.productType}:${item.productId}`
+          `PRODUCT_NOT_FOUND:${productType}:${productId}`,
         );
       }
 
@@ -102,25 +100,37 @@ export async function POST(request: NextRequest) {
 
       if (!product.is_active) {
         throw new Error(
-          `PRODUCT_INACTIVE:${item.productType}:${item.productId}`
+          `PRODUCT_INACTIVE:${productType}:${productId}`,
         );
       }
 
-      if (product.stock < item.quantity) {
+      const availableStock = Number(product.stock);
+
+      if (
+        !Number.isFinite(availableStock) ||
+        availableStock < quantity
+      ) {
         throw new Error(
-          `INSUFFICIENT_STOCK:${item.productType}:${item.productId}`
+          `INSUFFICIENT_STOCK:${productType}:${productId}`,
         );
       }
 
       const unitPrice = Number(product.price);
-      const subtotal = unitPrice * item.quantity;
+
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new Error(
+          `INVALID_PRICE:${productType}:${productId}`,
+        );
+      }
+
+      const subtotal = unitPrice * quantity;
 
       totalAmount += subtotal;
 
       processedItems.push({
-        productType: item.productType,
-        productId: item.productId,
-        quantity: item.quantity,
+        productType,
+        productId,
+        quantity,
         unitPrice,
         subtotal,
       });
@@ -143,7 +153,7 @@ export async function POST(request: NextRequest) {
           purchased_at,
           created_at
       `,
-      [body.userId, totalAmount]
+      [authenticatedUser.id, totalAmount],
     );
 
     const purchase = purchaseResult.rows[0];
@@ -172,25 +182,34 @@ export async function POST(request: NextRequest) {
           magazineId,
           item.quantity,
           item.unitPrice,
-        ]
+        ],
       );
 
       const table =
         item.productType === "book" ? "books" : "magazines";
 
-      await client.query(
+      const stockUpdateResult = await client.query(
         `
           UPDATE ${table}
           SET
             stock = stock - $1,
             updated_at = CURRENT_TIMESTAMP
           WHERE id = $2
+            AND stock >= $1
+          RETURNING stock
         `,
-        [item.quantity, item.productId]
+        [item.quantity, item.productId],
       );
+
+      if (stockUpdateResult.rowCount === 0) {
+        throw new Error(
+          `INSUFFICIENT_STOCK:${item.productType}:${item.productId}`,
+        );
+      }
     }
 
     await client.query("COMMIT");
+    transactionStarted = false;
 
     return NextResponse.json(
       {
@@ -201,10 +220,12 @@ export async function POST(request: NextRequest) {
           items: processedItems,
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (transactionStarted) {
+      await client.query("ROLLBACK");
+    }
 
     const message =
       error instanceof Error ? error.message : "UNKNOWN_ERROR";
@@ -215,7 +236,7 @@ export async function POST(request: NextRequest) {
           success: false,
           message: "Uno o más productos tienen datos inválidos.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -225,7 +246,7 @@ export async function POST(request: NextRequest) {
           success: false,
           message: "Uno de los productos solicitados no existe.",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -235,7 +256,7 @@ export async function POST(request: NextRequest) {
           success: false,
           message: "Uno de los productos solicitados está inactivo.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -245,7 +266,17 @@ export async function POST(request: NextRequest) {
           success: false,
           message: "No hay stock suficiente para uno de los productos.",
         },
-        { status: 409 }
+        { status: 409 },
+      );
+    }
+
+    if (message.startsWith("INVALID_PRICE")) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "El producto tiene un precio inválido.",
+        },
+        { status: 400 },
       );
     }
 
@@ -256,7 +287,7 @@ export async function POST(request: NextRequest) {
         success: false,
         message: "No fue posible registrar la compra.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     client.release();

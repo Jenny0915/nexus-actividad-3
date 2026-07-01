@@ -241,9 +241,9 @@ VALUES
         2024,
         'Español',
         420,
-        29.90,
+        29900,
         18,
-        '/images/books/react-moderno.jpg',
+        '/images/books/react-moderno.png',
         TRUE
     ),
     (
@@ -255,9 +255,9 @@ VALUES
         2025,
         'Español',
         510,
-        35.00,
+        35000,
         15,
-        '/images/books/nextjs-rendimiento.jpg',
+        '/images/books/nextjs-rendimiento.png',
         TRUE
     ),
     (
@@ -269,9 +269,9 @@ VALUES
         2023,
         'Español',
         360,
-        42.50,
+        42500,
         10,
-        '/images/books/api-rest.jpg',
+        '/images/books/api-rest.png',
         TRUE
     ),
     (
@@ -283,9 +283,9 @@ VALUES
         2022,
         'Español',
         300,
-        27.90,
+        27900,
         12,
-        '/images/books/experiencia-usuario.jpg',
+        '/images/books/experiencia-usuario.png',
         TRUE
     ),
     (
@@ -297,9 +297,9 @@ VALUES
         2024,
         'Español',
         280,
-        31.50,
+        31500,
         20,
-        '/images/books/interfaces-accesibles.jpg',
+        '/images/books/interfaces-accesibles.png',
         TRUE
     ),
     (
@@ -311,9 +311,9 @@ VALUES
         2023,
         'Español',
         460,
-        48.00,
+        48000,
         9,
-        '/images/books/postgresql.jpg',
+        '/images/books/postgresql.png',
         TRUE
     ),
     (
@@ -325,9 +325,9 @@ VALUES
         2021,
         'Español',
         220,
-        22.90,
+        22900,
         25,
-        '/images/books/ciudad-invisible.jpg',
+        '/images/books/ciudad-invisible.png',
         TRUE
     ),
     (
@@ -339,9 +339,9 @@ VALUES
         2024,
         'Español',
         390,
-        39.90,
+        39900,
         14,
-        '/images/books/sostenibilidad.jpg',
+        '/images/books/sostenibilidad.png',
         TRUE
     ),
     (
@@ -353,9 +353,9 @@ VALUES
         2022,
         'Español',
         250,
-        26.50,
+        26500,
         16,
-        '/images/books/emprendimiento.jpg',
+        '/images/books/emprendimiento.png',
         TRUE
     ),
     (
@@ -367,9 +367,9 @@ VALUES
         2020,
         'Español',
         540,
-        33.80,
+        33800,
         8,
-        '/images/books/historia-ideas.jpg',
+        '/images/books/historia-ideas.png',
         TRUE
     ),
     (
@@ -381,9 +381,9 @@ VALUES
         2025,
         'Español',
         430,
-        44.90,
+        44900,
         11,
-        '/images/books/inteligencia-artificial.jpg',
+        '/images/books/inteligencia-artificial.png',
         TRUE
     ),
     (
@@ -395,9 +395,9 @@ VALUES
         2023,
         'Español',
         310,
-        36.00,
+        36000,
         13,
-        '/images/books/modelos-negocio.jpg',
+        '/images/books/modelos-negocio.png',
         TRUE
     );
 
@@ -455,7 +455,7 @@ VALUES
         'Vol. 8 - Núm. 1',
         CURRENT_DATE - INTERVAL '30 days',
         'Tendencias recientes en desarrollo web, nube e inteligencia artificial.',
-        12.50,
+        12500,
         30,
         '/images/magazines/tecnologia-universitaria.jpg',
         TRUE
@@ -468,7 +468,7 @@ VALUES
         'Vol. 5 - Núm. 2',
         CURRENT_DATE - INTERVAL '60 days',
         'Divulgación científica y resultados de investigaciones universitarias.',
-        10.90,
+        10900,
         24,
         '/images/magazines/ciencia-abierta.jpg',
         TRUE
@@ -481,7 +481,7 @@ VALUES
         'Vol. 4 - Núm. 3',
         CURRENT_DATE - INTERVAL '15 days',
         'Diseño de productos digitales, accesibilidad y experiencia de usuario.',
-        14.00,
+        14000,
         18,
         '/images/magazines/diseno-innovacion.jpg',
         TRUE
@@ -494,7 +494,7 @@ VALUES
         'Vol. 10 - Núm. 1',
         CURRENT_DATE - INTERVAL '45 days',
         'Emprendimiento, economía digital e innovación empresarial.',
-        13.25,
+        13250,
         22,
         '/images/magazines/negocios-futuro.jpg',
         TRUE
@@ -515,31 +515,31 @@ VALUES
     (
         2,
         'completed',
-        102.30,
+        102300,
         CURRENT_TIMESTAMP - INTERVAL '20 days'
     ),
     (
         3,
         'completed',
-        47.50,
+        47500,
         CURRENT_TIMESTAMP - INTERVAL '15 days'
     ),
     (
         4,
         'completed',
-        59.40,
+        59400,
         CURRENT_TIMESTAMP - INTERVAL '10 days'
     ),
     (
         5,
         'completed',
-        93.80,
+        93800,
         CURRENT_TIMESTAMP - INTERVAL '5 days'
     ),
     (
         2,
         'pending',
-        39.90,
+        39900,
         CURRENT_TIMESTAMP - INTERVAL '1 day'
     );
 
@@ -558,23 +558,23 @@ INSERT INTO purchase_items (
 )
 VALUES
     -- Compra 1
-    (1, 1, NULL, 2, 29.90),
-    (1, 3, NULL, 1, 42.50),
+    (1, 1, NULL, 2, 29900),
+    (1, 3, NULL, 1, 42500),
 
     -- Compra 2
-    (2, 2, NULL, 1, 35.00),
-    (2, NULL, 1, 1, 12.50),
+    (2, 2, NULL, 1, 35000),
+    (2, NULL, 1, 1, 12500),
 
     -- Compra 3
-    (3, 4, NULL, 1, 27.90),
-    (3, 5, NULL, 1, 31.50),
+    (3, 4, NULL, 1, 27900),
+    (3, 5, NULL, 1, 31500),
 
     -- Compra 4
-    (4, 6, NULL, 1, 48.00),
-    (4, 7, NULL, 2, 22.90),
+    (4, 6, NULL, 1, 48000),
+    (4, 7, NULL, 2, 22900),
 
     -- Compra pendiente
-    (5, 8, NULL, 1, 39.90);
+    (5, 8, NULL, 1, 39900);
 
 
 -- ============================================================
@@ -599,7 +599,7 @@ VALUES
         1,
         'Planta única - Zona norte',
         'individual',
-        5.00,
+        5000,
         TRUE
     ),
     (
@@ -619,7 +619,7 @@ VALUES
         6,
         'Planta única - Zona central',
         'group',
-        12.00,
+        12000,
         TRUE
     ),
     (
@@ -629,7 +629,7 @@ VALUES
         10,
         'Planta única - Zona oriental',
         'meeting_room',
-        20.00,
+        20000,
         TRUE
     ),
     (
@@ -639,7 +639,7 @@ VALUES
         1,
         'Planta única - Zona occidental',
         'silent_booth',
-        8.00,
+        8000,
         TRUE
     );
 
