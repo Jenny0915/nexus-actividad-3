@@ -156,7 +156,7 @@ export default function NotFound() {
 
         <div className={styles.footerBottom}>
           <span>
-            © 2026 Nexus. Desarrollo Web con Frameworks Front-End.
+            © 2026 Nexus. Actividad 3 - Desarrollo Web con Frameworks Front-End.
           </span>
 
           <span>Por: Jenny Andrea Laverde Rodríguez</span>

@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import AuthMenu from "@/components/AuthMenu";
+import LanguageSelector from "@/components/LanguageSelector";
+import { getLocale } from "@/lib/i18n/get-locale";
+
 import {
   getCoworkingSpaces,
   getCoworkingSpaceTypes,
@@ -242,7 +246,10 @@ function SpaceCard({ space }: { space: CoworkingSpace }) {
 export default async function CoworkingPage({
   searchParams,
 }: CoworkingPageProps) {
-  const params = await searchParams;
+  const [params, locale] = await Promise.all([
+    searchParams,
+    getLocale(),
+  ]);
 
   const selectedAvailability = params.available ?? "";
   const selectedSpaceType = params.spaceType ?? "";
@@ -311,14 +318,14 @@ export default async function CoworkingPage({
               Co-working
             </Link>
 
-            <button type="button" className={styles.languageButton}>
-              ES
-              <span aria-hidden="true">⌄</span>
-            </button>
+            <LanguageSelector locale={locale} />
 
-            <button type="button" className={styles.loginButton}>
-              Iniciar sesión
-            </button>
+            <AuthMenu
+              loginClassName={styles.loginButton}
+              containerClassName={styles.authMenu}
+              userClassName={styles.authUser}
+              logoutClassName={styles.logoutButton}
+            />
           </nav>
         </div>
       </header>
@@ -641,11 +648,10 @@ export default async function CoworkingPage({
 
         <div className={styles.footerBottom}>
           <span>
-            © 2026 Nexus. Proyecto académico de Desarrollo Web con Frameworks
-            Front-End.
+            © 2026 Nexus. Actividad 3 - Desarrollo Web con Frameworks Front-End.
           </span>
 
-          <span>Universidad Internacional de La Rioja</span>
+          <span>Por: Jenny Andrea Laverde Rodríguez</span>
         </div>
       </footer>
     </main>

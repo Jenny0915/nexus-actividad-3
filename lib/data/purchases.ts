@@ -34,6 +34,16 @@ export interface UserPurchaseHistory {
   purchases: UserPurchase[];
 }
 
+function normalizeUserId(userId: number | string): number | null {
+  const parsedUserId = Number(userId);
+
+  if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+    return null;
+  }
+
+  return parsedUserId;
+}
+
 /**
  * Consulta un usuario y todo su historial de compras.
  *
@@ -41,8 +51,14 @@ export interface UserPurchaseHistory {
  * una petición HTTP interna hacia la propia API de Next.js.
  */
 export async function getUserPurchaseHistory(
-  userId: number,
+  userId: number | string,
 ): Promise<UserPurchaseHistory | null> {
+  const normalizedUserId = normalizeUserId(userId);
+
+  if (!normalizedUserId) {
+    return null;
+  }
+
   try {
     const userResult = await db.query<PurchaseUser>(
       `
@@ -54,10 +70,10 @@ export async function getUserPurchaseHistory(
         FROM users
         WHERE id = $1
       `,
-      [userId],
+      [normalizedUserId],
     );
 
-    if (userResult.rowCount === 0) {
+    if ((userResult.rowCount ?? 0) === 0) {
       return null;
     }
 
@@ -111,7 +127,7 @@ export async function getUserPurchaseHistory(
 
         ORDER BY pu.purchased_at DESC
       `,
-      [userId],
+      [normalizedUserId],
     );
 
     return {
@@ -120,7 +136,7 @@ export async function getUserPurchaseHistory(
     };
   } catch (error) {
     console.error(
-      `Error al consultar las compras del usuario ${userId}:`,
+      `Error al consultar las compras del usuario ${normalizedUserId}:`,
       error,
     );
 

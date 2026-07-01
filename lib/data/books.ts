@@ -43,13 +43,16 @@ export interface BookFilters {
 
 type QueryValue = string | number;
 
-/**
- * Consulta el catálogo de libros activos.
- *
- * Esta función se utiliza directamente desde Server Components.
- * También admite filtros opcionales para reutilizarla posteriormente
- * en la página de catálogo.
- */
+function normalizeBookId(id: number | string): number | null {
+  const parsedId = Number(id);
+
+  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    return null;
+  }
+
+  return parsedId;
+}
+
 export async function getBooks(filters: BookFilters = {}): Promise<Book[]> {
   const conditions: string[] = ["b.is_active = TRUE"];
   const values: QueryValue[] = [];
@@ -81,7 +84,6 @@ export async function getBooks(filters: BookFilters = {}): Promise<Book[]> {
 
   if (filters.search?.trim()) {
     values.push(`%${filters.search.trim()}%`);
-
     conditions.push(`
       (
         b.title ILIKE $${values.length}
@@ -91,8 +93,6 @@ export async function getBooks(filters: BookFilters = {}): Promise<Book[]> {
     `);
   }
 
-  const whereClause = `WHERE ${conditions.join(" AND ")}`;
-
   const query = `
     SELECT
       b.id,
@@ -108,14 +108,11 @@ export async function getBooks(filters: BookFilters = {}): Promise<Book[]> {
       b.is_active,
       b.created_at,
       b.updated_at,
-
       c.id AS category_id,
       c.name AS category_name,
       c.slug AS category_slug,
-
       p.id AS publisher_id,
       p.name AS publisher_name,
-
       COALESCE(
         JSON_AGG(
           JSON_BUILD_OBJECT(
@@ -127,70 +124,41 @@ export async function getBooks(filters: BookFilters = {}): Promise<Book[]> {
         ) FILTER (WHERE a.id IS NOT NULL),
         '[]'::json
       ) AS authors
-
     FROM books b
-
-    INNER JOIN categories c
-      ON c.id = b.category_id
-
-    INNER JOIN publishers p
-      ON p.id = b.publisher_id
-
-    LEFT JOIN book_authors ba
-      ON ba.book_id = b.id
-
-    LEFT JOIN authors a
-      ON a.id = ba.author_id
-
-    ${whereClause}
-
-    GROUP BY
-      b.id,
-      c.id,
-      p.id
-
+    INNER JOIN categories c ON c.id = b.category_id
+    INNER JOIN publishers p ON p.id = b.publisher_id
+    LEFT JOIN book_authors ba ON ba.book_id = b.id
+    LEFT JOIN authors a ON a.id = ba.author_id
+    WHERE ${conditions.join(" AND ")}
+    GROUP BY b.id, c.id, p.id
     ORDER BY b.title ASC
   `;
 
   try {
     const result = await db.query<Book>(query, values);
-
     return result.rows;
   } catch (error) {
     console.error("Error al consultar el catálogo de libros:", error);
-
     throw new Error("No fue posible consultar el catálogo de libros.");
   }
 }
 
-/**
- * Consulta los diez libros más vendidos durante las últimas ocho semanas.
- *
- * Esta información será utilizada en la landing de la librería con ISR.
- */
 export async function getBestSellingBooks(): Promise<Book[]> {
   const query = `
     WITH book_sales AS (
       SELECT
         pi.book_id,
         SUM(pi.quantity)::int AS total_sold
-
       FROM purchase_items pi
-
-      INNER JOIN purchases pu
-        ON pu.id = pi.purchase_id
-
+      INNER JOIN purchases pu ON pu.id = pi.purchase_id
       WHERE pi.book_id IS NOT NULL
         AND pu.status = 'completed'
         AND pu.purchased_at >= CURRENT_TIMESTAMP - INTERVAL '8 weeks'
-
       GROUP BY pi.book_id
     ),
-
     book_author_data AS (
       SELECT
         ba.book_id,
-
         JSON_AGG(
           JSON_BUILD_OBJECT(
             'id', a.id,
@@ -199,15 +167,10 @@ export async function getBestSellingBooks(): Promise<Book[]> {
           )
           ORDER BY a.first_name, a.last_name
         ) AS authors
-
       FROM book_authors ba
-
-      INNER JOIN authors a
-        ON a.id = ba.author_id
-
+      INNER JOIN authors a ON a.id = ba.author_id
       GROUP BY ba.book_id
     )
-
     SELECT
       b.id,
       b.title,
@@ -219,55 +182,41 @@ export async function getBestSellingBooks(): Promise<Book[]> {
       b.price,
       b.stock,
       b.cover_url,
-
       c.id AS category_id,
       c.name AS category_name,
       c.slug AS category_slug,
-
       p.id AS publisher_id,
       p.name AS publisher_name,
-
       COALESCE(bs.total_sold, 0)::int AS total_sold,
       COALESCE(bad.authors, '[]'::json) AS authors
-
     FROM books b
-
-    INNER JOIN categories c
-      ON c.id = b.category_id
-
-    INNER JOIN publishers p
-      ON p.id = b.publisher_id
-
-    LEFT JOIN book_sales bs
-      ON bs.book_id = b.id
-
-    LEFT JOIN book_author_data bad
-      ON bad.book_id = b.id
-
+    INNER JOIN categories c ON c.id = b.category_id
+    INNER JOIN publishers p ON p.id = b.publisher_id
+    LEFT JOIN book_sales bs ON bs.book_id = b.id
+    LEFT JOIN book_author_data bad ON bad.book_id = b.id
     WHERE b.is_active = TRUE
-
-    ORDER BY
-      total_sold DESC,
-      b.title ASC
-
+    ORDER BY total_sold DESC, b.title ASC
     LIMIT 10
   `;
 
   try {
     const result = await db.query<Book>(query);
-
     return result.rows;
   } catch (error) {
     console.error("Error al consultar los libros más vendidos:", error);
-
     throw new Error("No fue posible consultar los libros más vendidos.");
   }
 }
 
-/**
- * Consulta un libro activo mediante su identificador.
- */
-export async function getBookById(id: number): Promise<Book | null> {
+export async function getBookById(
+  id: number | string,
+): Promise<Book | null> {
+  const normalizedBookId = normalizeBookId(id);
+
+  if (!normalizedBookId) {
+    return null;
+  }
+
   const query = `
     SELECT
       b.id,
@@ -283,14 +232,11 @@ export async function getBookById(id: number): Promise<Book | null> {
       b.is_active,
       b.created_at,
       b.updated_at,
-
       c.id AS category_id,
       c.name AS category_name,
       c.slug AS category_slug,
-
       p.id AS publisher_id,
       p.name AS publisher_name,
-
       COALESCE(
         JSON_AGG(
           JSON_BUILD_OBJECT(
@@ -302,39 +248,25 @@ export async function getBookById(id: number): Promise<Book | null> {
         ) FILTER (WHERE a.id IS NOT NULL),
         '[]'::json
       ) AS authors
-
     FROM books b
-
-    INNER JOIN categories c
-      ON c.id = b.category_id
-
-    INNER JOIN publishers p
-      ON p.id = b.publisher_id
-
-    LEFT JOIN book_authors ba
-      ON ba.book_id = b.id
-
-    LEFT JOIN authors a
-      ON a.id = ba.author_id
-
+    INNER JOIN categories c ON c.id = b.category_id
+    INNER JOIN publishers p ON p.id = b.publisher_id
+    LEFT JOIN book_authors ba ON ba.book_id = b.id
+    LEFT JOIN authors a ON a.id = ba.author_id
     WHERE b.id = $1
       AND b.is_active = TRUE
-
-    GROUP BY
-      b.id,
-      c.id,
-      p.id
-
+    GROUP BY b.id, c.id, p.id
     LIMIT 1
   `;
 
   try {
-    const result = await db.query<Book>(query, [id]);
-
+    const result = await db.query<Book>(query, [normalizedBookId]);
     return result.rows[0] ?? null;
   } catch (error) {
-    console.error(`Error al consultar el libro con ID ${id}:`, error);
-
+    console.error(
+      `Error al consultar el libro con ID ${normalizedBookId}:`,
+      error,
+    );
     throw new Error("No fue posible consultar el libro.");
   }
 }

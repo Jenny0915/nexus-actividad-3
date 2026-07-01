@@ -661,11 +661,10 @@ export default async function ReservationsPage() {
 
         <div className={styles.footerBottom}>
           <span>
-            © 2026 Nexus. Proyecto académico de Desarrollo Web con Frameworks
-            Front-End.
+            © 2026 Nexus. Actividad 3 - Desarrollo Web con Frameworks Front-End.
           </span>
 
-          <span>Universidad Internacional de La Rioja</span>
+          <span>Por: Jenny Andrea Laverde Rodríguez</span>
         </div>
       </footer>
     </main>

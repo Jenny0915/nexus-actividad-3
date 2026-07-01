@@ -89,25 +89,59 @@ function formatDateTime(value: string): string {
   }).format(date);
 }
 
-function toIsoString(localValue: string): string | null {
+function parseLocalDateTime(localValue: string): Date | null {
   if (!localValue) {
     return null;
   }
 
-  const date = new Date(localValue);
+  const match = localValue.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/,
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, day, hour, minute] = match;
+
+  const date = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    0,
+    0,
+  );
 
   if (Number.isNaN(date.getTime())) {
     return null;
   }
 
-  return date.toISOString();
+  return date;
+}
+
+function toIsoString(localValue: string): string | null {
+  const date = parseLocalDateTime(localValue);
+
+  return date ? date.toISOString() : null;
+}
+
+function formatLocalDateTimeInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
 function getMinimumDateTime(): string {
   const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset() + 1);
+  now.setMinutes(now.getMinutes() + 1);
 
-  return now.toISOString().slice(0, 16);
+  return formatLocalDateTimeInput(now);
 }
 
 function CalendarIcon() {
@@ -182,14 +216,10 @@ export default function ReservationForm({
       return 0;
     }
 
-    const startDate = new Date(startTime);
-    const endDate = new Date(endTime);
+    const startDate = parseLocalDateTime(startTime);
+    const endDate = parseLocalDateTime(endTime);
 
-    if (
-      Number.isNaN(startDate.getTime()) ||
-      Number.isNaN(endDate.getTime()) ||
-      endDate <= startDate
-    ) {
+    if (!startDate || !endDate || endDate <= startDate) {
       return 0;
     }
 
@@ -379,9 +409,7 @@ export default function ReservationForm({
         </div>
 
         <div className={styles.successActions}>
-          <Link
-            href={`/coworking/reservations?userId=${reservation.user_id}`}
-          >
+          <Link href="/coworking/reservations">
             Consultar mis reservas
           </Link>
 
@@ -447,9 +475,15 @@ export default function ReservationForm({
             onChange={(event) => {
               setStartTime(event.target.value);
 
+              const selectedStart = parseLocalDateTime(
+                event.target.value,
+              );
+              const selectedEnd = parseLocalDateTime(endTime);
+
               if (
-                endTime &&
-                new Date(endTime) <= new Date(event.target.value)
+                selectedStart &&
+                selectedEnd &&
+                selectedEnd <= selectedStart
               ) {
                 setEndTime("");
               }
@@ -610,7 +644,11 @@ export default function ReservationForm({
       <button
         type="submit"
         className={styles.submitButton}
-        disabled={isSubmitting || durationHours <= 0}
+        disabled={
+          isSubmitting ||
+          durationHours <= 0 ||
+          !acceptTerms
+        }
       >
         <CalendarIcon />
 

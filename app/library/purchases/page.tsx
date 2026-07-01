@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
+import LanguageSelector from "@/components/LanguageSelector";
+import { getAuthenticatedDatabaseUser } from "@/lib/data/auth-user";
 import {
   getUserPurchaseHistory,
   type PurchaseItem,
   type UserPurchase,
 } from "@/lib/data/purchases";
-
-import { getUsers } from "@/lib/data/users";
+import { getLocale } from "@/lib/i18n/get-locale";
 
 import styles from "./purchases.module.css";
 
@@ -21,26 +21,6 @@ export const metadata: Metadata = {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-interface PurchasesPageProps {
-  searchParams: Promise<{
-    userId?: string;
-  }>;
-}
-
-function parseUserId(value?: string): number | null {
-  if (!value) {
-    return null;
-  }
-
-  const parsedValue = Number(value);
-
-  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
-    return null;
-  }
-
-  return parsedValue;
-}
 
 function formatPrice(value: string | number): string {
   const numericValue =
@@ -106,6 +86,11 @@ function getStatusClass(status: string): string {
   return styles.statusCancelled;
 }
 
+
+function getInitials(firstName: string, lastName: string): string {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
 function getTotalItems(purchases: UserPurchase[]): number {
   return purchases.reduce(
     (total, purchase) =>
@@ -139,15 +124,6 @@ function BookIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
       <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5v-16Z" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21a8 8 0 0 1 16 0" />
     </svg>
   );
 }
@@ -217,23 +193,15 @@ function PurchaseProduct({ item }: { item: PurchaseItem }) {
   );
 }
 
-export default async function PurchasesPage({
-  searchParams,
-}: PurchasesPageProps) {
-  const params = await searchParams;
-  const selectedUserId = parseUserId(params.userId);
+export default async function PurchasesPage() {
+  const [authenticatedUser, locale] = await Promise.all([
+    getAuthenticatedDatabaseUser(),
+    getLocale(),
+  ]);
 
-  const users = await getUsers();
-
-  let history = null;
-
-  if (selectedUserId) {
-    history = await getUserPurchaseHistory(selectedUserId);
-
-    if (!history) {
-      notFound();
-    }
-  }
+  const history = authenticatedUser
+    ? await getUserPurchaseHistory(authenticatedUser.id)
+    : null;
 
   const totalPurchases = history?.purchases.length ?? 0;
   const totalProducts = history ? getTotalItems(history.purchases) : 0;
@@ -271,14 +239,36 @@ export default async function PurchasesPage({
 
             <Link href="/coworking">Co-working</Link>
 
-            <button type="button" className={styles.languageButton}>
-              ES
-              <span aria-hidden="true">⌄</span>
-            </button>
+            <LanguageSelector
+              locale={locale}
+              className={styles.languageButton}
+            />
 
-            <button type="button" className={styles.loginButton}>
-              Iniciar sesión
-            </button>
+            {authenticatedUser ? (
+              <div className={styles.authMenu}>
+                <div className={styles.authUser}>
+                  <span className="auth-user__avatar">
+                    {getInitials(
+                      authenticatedUser.first_name,
+                      authenticatedUser.last_name,
+                    )}
+                  </span>
+
+                  <span className="auth-user__information">
+                    <small>Sesión iniciada</small>
+                    <strong>{authenticatedUser.first_name}</strong>
+                  </span>
+                </div>
+
+                <a href="/auth/logout" className={styles.loginButton}>
+                  Cerrar sesión
+                </a>
+              </div>
+            ) : (
+              <a href="/auth/login" className={styles.loginButton}>
+                Iniciar sesión
+              </a>
+            )}
           </nav>
         </div>
       </header>
@@ -314,54 +304,27 @@ export default async function PurchasesPage({
               <span aria-hidden="true">→</span>
             </Link>
           </div>
-
-          <form
-            className={styles.userSelector}
-            method="GET"
-            action="/library/purchases"
-          >
-            <span className={styles.selectorIcon}>
-              <UserIcon />
-            </span>
-
-            <label htmlFor="history-user">
-              <span>Usuario</span>
-
-              <select
-                id="history-user"
-                name="userId"
-                defaultValue={selectedUserId ? String(selectedUserId) : ""}
-                required
-              >
-                <option value="">Selecciona un usuario</option>
-
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.first_name} {user.last_name} — {user.email}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <button type="submit">Consultar historial</button>
-          </form>
         </div>
       </section>
 
-      {!selectedUserId ? (
+      {!authenticatedUser ? (
         <section className={styles.initialState}>
           <div className={styles.initialStateIcon}>
             <ShoppingBagIcon />
           </div>
 
-          <span>Consulta de compras</span>
+          <span>Acceso requerido</span>
 
-          <h2>Selecciona un usuario para consultar su historial</h2>
+          <h2>Inicia sesión para consultar tus compras</h2>
 
           <p>
-            Mientras configuramos la autenticación con Auth0, puedes seleccionar
-            temporalmente cualquiera de los usuarios registrados.
+            Tu historial se mostrará automáticamente cuando ingreses con tu
+            cuenta de Nexus.
           </p>
+
+          <a href="/auth/login" className={styles.catalogButton}>
+            Iniciar sesión
+          </a>
         </section>
       ) : (
         <>
@@ -495,7 +458,7 @@ export default async function PurchasesPage({
 
                   <span>Sin compras registradas</span>
 
-                  <h3>Este usuario todavía no ha realizado compras</h3>
+                  <h3>Todavía no has realizado compras</h3>
 
                   <p>
                     Explora el catálogo para consultar las publicaciones

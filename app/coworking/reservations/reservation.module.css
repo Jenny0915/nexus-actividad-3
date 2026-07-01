@@ -1339,3 +1339,59 @@
   }
 }
 
+/* ===========================
+   BOTÓN CERRAR SESIÓN - AJUSTE FINAL
+=========================== */
+
+.authenticatedUser .logoutButton {
+  min-height: 44px;
+  padding: 0 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #12375b, #235d89);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(18, 55, 91, 0.2);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.authenticatedUser .logoutButton::after {
+  display: none;
+  content: none;
+}
+
+.authenticatedUser .logoutButton:hover {
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 13px 27px rgba(18, 55, 91, 0.26);
+}
+
+.authenticatedUser .logoutButton:focus-visible {
+  outline: 3px solid rgba(22, 164, 197, 0.25);
+  outline-offset: 3px;
+}
+
+@media (max-width: 1080px) {
+  .authenticatedUser .logoutButton {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+
+@media (max-width: 760px) {
+  .authenticatedUser .logoutButton {
+    min-height: 42px;
+    padding-right: 13px;
+    padding-left: 13px;
+    font-size: 10px;
+  }
+}
+

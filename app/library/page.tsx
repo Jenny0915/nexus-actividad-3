@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import AuthMenu from "@/components/AuthMenu";
+import LanguageSelector from "@/components/LanguageSelector";
+import { getLocale } from "@/lib/i18n/get-locale";
+
 import {
   getBestSellingBooks,
   getBooks,
@@ -18,12 +22,11 @@ export const metadata: Metadata = {
 };
 
 /*
- * La página puede regenerarse como máximo una vez cada hora.
- * Los filtros recibidos por URL se procesan desde el servidor.
+ * La página se renderiza dinámicamente para que el encabezado
+ * reconozca siempre la sesión actual de Auth0.
  */
-export const revalidate = 3600;
-
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 interface CategorySummary {
   id: number;
@@ -228,7 +231,10 @@ function CatalogBookCard({ book }: { book: Book }) {
 export default async function LibraryPage({
   searchParams,
 }: LibraryPageProps) {
-  const params = await searchParams;
+  const [params, locale] = await Promise.all([
+    searchParams,
+    getLocale(),
+  ]);
 
   const selectedSearch = params.search?.trim() ?? "";
   const selectedCategoryId = params.categoryId ?? "";
@@ -309,14 +315,14 @@ export default async function LibraryPage({
 
             <Link href="/coworking">Co-working</Link>
 
-            <button type="button" className={styles.languageButton}>
-              ES
-              <span aria-hidden="true">⌄</span>
-            </button>
+            <LanguageSelector locale={locale} />
 
-            <button type="button" className={styles.loginButton}>
-              Iniciar sesión
-            </button>
+            <AuthMenu
+              loginClassName={styles.loginButton}
+              containerClassName={styles.authMenu}
+              userClassName={styles.authUser}
+              logoutClassName={styles.logoutButton}
+            />
           </nav>
         </div>
       </header>
@@ -706,8 +712,7 @@ export default async function LibraryPage({
 
         <div className={styles.footerBottom}>
           <span>
-            © 2026 Nexus. Proyecto académico de Desarrollo Web con Frameworks
-            Front-End.
+            © 2026 Nexus. Actividad 3 - Desarrollo Web con Frameworks Front-End.
           </span>
 
           <span>Por: Jenny Andrea Laverde Rodríguez</span>

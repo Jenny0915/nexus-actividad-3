@@ -3,6 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import AuthMenu from "@/components/AuthMenu";
+import LanguageSelector from "@/components/LanguageSelector";
+import { getLocale } from "@/lib/i18n/get-locale";
+
 import {
   getBookById,
   getBooks,
@@ -11,8 +15,8 @@ import {
 
 import styles from "./book-detail.module.css";
 
-export const revalidate = 3600;
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 interface BookDetailPageProps {
   params: Promise<{
@@ -101,23 +105,6 @@ function ShoppingIcon() {
   );
 }
 
-export async function generateStaticParams() {
-  try {
-    const books = await getBooks();
-
-    return books.map((book) => ({
-      id: String(book.id),
-    }));
-  } catch (error) {
-    console.error(
-      "No fue posible generar las rutas estáticas de libros:",
-      error,
-    );
-
-    return [];
-  }
-}
-
 export async function generateMetadata({
   params,
 }: BookDetailPageProps): Promise<Metadata> {
@@ -162,7 +149,10 @@ export default async function BookDetailPage({
     notFound();
   }
 
-  const book = await getBookById(bookId);
+  const [book, locale] = await Promise.all([
+    getBookById(bookId),
+    getLocale(),
+  ]);
 
   if (!book) {
     notFound();
@@ -205,14 +195,14 @@ export default async function BookDetailPage({
 
             <Link href="/coworking">Co-working</Link>
 
-            <button type="button" className={styles.languageButton}>
-              ES
-              <span aria-hidden="true">⌄</span>
-            </button>
+            <LanguageSelector locale={locale} />
 
-            <button type="button" className={styles.loginButton}>
-              Iniciar sesión
-            </button>
+            <AuthMenu
+              loginClassName={styles.loginButton}
+              containerClassName={styles.authMenu}
+              userClassName={styles.authUser}
+              logoutClassName={styles.logoutButton}
+            />
           </nav>
         </div>
       </header>
@@ -506,8 +496,7 @@ export default async function BookDetailPage({
 
         <div className={styles.footerBottom}>
           <span>
-            © 2026 Nexus. Proyecto académico de Desarrollo Web con Frameworks
-            Front-End.
+            © 2026 Nexus. Actividad 3 - Desarrollo Web con Frameworks Front-End.
           </span>
 
           <span>Por: Jenny Andrea Laverde Rodríguez</span>
